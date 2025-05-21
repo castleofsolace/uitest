@@ -1,76 +1,117 @@
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
+-- CONFIGURABLES
+local gradientColors = {
+    Color3.fromRGB(255, 0, 128),
+    Color3.fromRGB(128, 0, 255),
+    Color3.fromRGB(0, 255, 255)
+}
+local backgroundColor = Color3.fromRGB(30, 30, 35)
+local barColor = Color3.fromRGB(60, 60, 70)
+local fillColor = Color3.fromRGB(255, 80, 180)
+local textFont = 3 -- UI, Cartoony
+local textSize = 48
 
--- Exploit-safe GUI creation
-local function CreateLoader()
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    ScreenGui.ResetOnSpawn = false
-    
-    local Main = Instance.new("Frame")
-    Main.Size = UDim2.new(1, 0, 1, 0)
-    Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Main.BorderSizePixel = 0
-    
-    -- Gradient text implementation
-    local TextLabel = Instance.new("TextLabel")
-    TextLabel.Text = "VelvetHub Scripts [BGSI]"
-    TextLabel.Size = UDim2.new(1, 0, 0.2, 0)
-    TextLabel.Position = UDim2.new(0, 0, 0.35, 0)
-    TextLabel.BackgroundTransparency = 1
-    TextLabel.Font = Enum.Font.GothamBlack
-    TextLabel.TextSize = 28
-    
-    local Gradient = Instance.new("UIGradient")
-    Gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 170, 170)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 100))
-    })
-    Gradient.Rotation = 45
-    Gradient.Parent = TextLabel
-    
-    -- Progress bar construction
-    local BarContainer = Instance.new("Frame")
-    BarContainer.Size = UDim2.new(0.8, 0, 0.04, 0)
-    BarContainer.Position = UDim2.new(0.1, 0, 0.55, 0)
-    BarContainer.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    BarContainer.BorderSizePixel = 0
-    
-    local Progress = Instance.new("Frame")
-    Progress.Size = UDim2.new(0, 0, 1, 0)
-    Progress.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
-    Progress.BorderSizePixel = 0
-    Progress.Parent = BarContainer
-    
-    -- Assembly hierarchy
-    TextLabel.Parent = Main
-    BarContainer.Parent = Main
-    Main.Parent = ScreenGui
-    
-    return ScreenGui, Progress
+-- Drawing API objects
+local drawings = {}
+
+-- Helper: Gradient text (simulated by overlaying colored text)
+local function drawGradientText(text, x, y, size, font, colors)
+    local len = #text
+    for i = 1, len do
+        local t = (i-1)/(len-1)
+        local c1 = colors[math.floor(t*(#colors-1))+1]
+        local c2 = colors[math.ceil(t*(#colors-1)+1)] or c1
+        local blend = Color3.new(
+            c1.R + (c2.R-c1.R)*(t*(#colors-1)%1),
+            c1.G + (c2.G-c1.G)*(t*(#colors-1)%1),
+            c1.B + (c2.B-c1.B)*(t*(#colors-1)%1)
+        )
+        local char = Drawing.new("Text")
+        char.Text = text:sub(i,i)
+        char.Size = size
+        char.Font = font
+        char.Color = blend
+        char.Position = Vector2.new(x + (i-1)*size*0.6, y)
+        char.Center = false
+        char.Outline = true
+        char.Visible = true
+        table.insert(drawings, char)
+    end
 end
 
--- Execution flow
-local LoaderUI, ProgressBar = CreateLoader()
-LoaderUI.Parent = game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
-
--- Non-blocking animation routine
-task.spawn(function()
-    local StartTime = tick()
-    local Tween = TweenService:Create(
-        ProgressBar,
-        TweenInfo.new(9, Enum.EasingStyle.Quad),
-        {Size = UDim2.new(0.99, 0, 1, 0)}
-    )
-    
-    Tween:Play()
-    
-    while tick() - StartTime < 9 do
-        RunService.Heartbeat:Wait()
+-- Helper: Remove all drawings
+local function cleanup()
+    for _, d in ipairs(drawings) do
+        pcall(function() d:Remove() end)
     end
+    drawings = {}
+end
+
+-- Get screen size
+local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920,1080)
+local w, h = viewport.X, viewport.Y
+
+-- Background
+local bg = Drawing.new("Square")
+bg.Size = Vector2.new(w, h)
+bg.Position = Vector2.new(0, 0)
+bg.Color = backgroundColor
+bg.Filled = true
+bg.Visible = true
+table.insert(drawings, bg)
+
+-- Gradient Title
+local title = "VelvetHub Scripts [BGSI]"
+local titleX = w/2 - (#title*textSize*0.3)
+local titleY = h/2 - 120
+drawGradientText(title, titleX, titleY, textSize, textFont, gradientColors)
+
+-- Loading Bar
+local barWidth, barHeight = w*0.5, 32
+local barX, barY = w/2 - barWidth/2, h/2
+local barBG = Drawing.new("Square")
+barBG.Size = Vector2.new(barWidth, barHeight)
+barBG.Position = Vector2.new(barX, barY)
+barBG.Color = barColor
+barBG.Filled = true
+barBG.Visible = true
+barBG.Thickness = 2
+table.insert(drawings, barBG)
+
+local barFill = Drawing.new("Square")
+barFill.Size = Vector2.new(0, barHeight)
+barFill.Position = Vector2.new(barX, barY)
+barFill.Color = fillColor
+barFill.Filled = true
+barFill.Visible = true
+table.insert(drawings, barFill)
+
+-- Loading %
+local percentText = Drawing.new("Text")
+percentText.Text = "0%"
+percentText.Size = 32
+percentText.Font = textFont
+percentText.Color = Color3.fromRGB(255,255,255)
+percentText.Position = Vector2.new(w/2-24, barY+barHeight+10)
+percentText.Center = false
+percentText.Outline = true
+percentText.Visible = true
+table.insert(drawings, percentText)
+
+-- Start loading the external script in the background
+spawn(function()
+    pcall(function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
+    end)
 end)
 
--- Background script execution
-task.spawn(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
-end)
+-- Animate loading bar to 99%
+local percent = 0
+while percent < 99 do
+    percent = percent + math.random(1,3) * 0.2
+    if percent > 99 then percent = 99 end
+    barFill.Size = Vector2.new(barWidth * (percent/100), barHeight)
+    percentText.Text = string.format("%d%%", percent)
+    wait(0.03 + math.random()*0.02)
+end
+barFill.Size = Vector2.new(barWidth * 0.99, barHeight)
+percentText.Text = "99%"
