@@ -1,43 +1,55 @@
--- Services
 local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService") -- Usually available
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 -- Ensure LocalPlayer is available
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then
-    warn("LocalPlayer not found. Waiting for LocalPlayer...")
+    warn("[SETUP] LocalPlayer not found initially. Waiting...")
     local playerAddedConnection
-    playerAddedConnection = Players.PlayerAdded:Connect(function(player)
-        if player == Players.LocalPlayer then
-            LocalPlayer = player
-            if playerAddedConnection then
-                playerAddedConnection:Disconnect()
+    if not Players.LocalPlayer then -- Ensure it wasn't set while checking
+        playerAddedConnection = Players.PlayerAdded:Connect(function(player)
+            if player == Players.LocalPlayer then -- Check if the added player is the LocalPlayer
+                LocalPlayer = player
+                if playerAddedConnection then
+                    playerAddedConnection:Disconnect()
+                    playerAddedConnection = nil
+                    print("[SETUP] LocalPlayer detected via PlayerAdded event:", LocalPlayer.Name)
+                end
+            end
+        end)
+        -- Wait for a bit if LocalPlayer isn't immediately available
+        if not Players.LocalPlayer then
+            for i = 1, 50 do -- Wait up to 5 seconds
+                if Players.LocalPlayer then break end
+                task.wait(0.1)
             end
         end
-    end)
-    if not LocalPlayer then -- Check again if it was set by the event quickly
-         repeat task.wait() until Players.LocalPlayer
+        LocalPlayer = Players.LocalPlayer
+        if playerAddedConnection and LocalPlayer then playerAddedConnection:Disconnect() end
     end
-    LocalPlayer = Players.LocalPlayer
-    if playerAddedConnection and LocalPlayer then playerAddedConnection:Disconnect() end
+
 
     if not LocalPlayer then
-        error("Executor Error: LocalPlayer could not be found. Cannot create GUI.")
+        error("[SETUP_ERROR] Executor Error: LocalPlayer could not be found after waiting. Cannot create GUI.")
         return
+    else
+        print("[SETUP] LocalPlayer found:", LocalPlayer.Name)
     end
 end
-print("Executor: LocalPlayer found:", LocalPlayer.Name)
+
 
 -- Create a ScreenGui
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "ExecutorLoadingScreenGUI_v3_" .. string.sub(HttpService:GenerateGUID(false), 1, 8) -- Unique-ish name
-screenGui.IgnoreGuiInset = false -- false to respect Roblox's default UI space (top bar)
+screenGui.Name = "ExecutorLoadingScreenGUI_v4_" .. string.sub(HttpService:GenerateGUID(false), 1, 8)
+screenGui.IgnoreGuiInset = false -- IMPORTANT: false to respect Roblox's default UI space (top bar)
 screenGui.ResetOnSpawn = false
-screenGui.DisplayOrder = 2147483646
+screenGui.DisplayOrder = 2147483646 -- High, but should be below Roblox ESC menu (often 2147483647)
 screenGui.Parent = CoreGui
-print("Executor: ScreenGui created and parented to CoreGui.")
+print("[GUI_SETUP] ScreenGui created. Name: ", screenGui.Name, ". Parent: ", screenGui.Parent)
+print("[GUI_SETUP] IgnoreGuiInset: ", screenGui.IgnoreGuiInset)
+print("[GUI_SETUP] DisplayOrder: ", screenGui.DisplayOrder)
 
 -- Create a background Frame
 local backgroundFrame = Instance.new("Frame")
@@ -47,27 +59,31 @@ backgroundFrame.BorderSizePixel = 0
 backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
 backgroundFrame.Parent = screenGui
 
--- Create a container for loading elements (for centering)
+local backgroundCorner = Instance.new("UICorner")
+backgroundCorner.CornerRadius = UDim.new(0, 12) -- Rounded corners for the main background
+backgroundCorner.Parent = backgroundFrame
+
+-- Create a container for loading elements
 local loadingContainer = Instance.new("Frame")
 loadingContainer.Name = "LoadingContainer"
 loadingContainer.BackgroundTransparency = 1
-loadingContainer.Size = UDim2.new(0.7, 0, 0.45, 0) -- Slightly increased height to accommodate new text
+loadingContainer.Size = UDim2.new(0.7, 0, 0.45, 0)
 loadingContainer.Position = UDim2.new(0.5, 0, 0.5, 0)
 loadingContainer.AnchorPoint = Vector2.new(0.5, 0.5)
 loadingContainer.Parent = backgroundFrame
 
--- Create a title TextLabel (Cartoony Style)
+-- Create a title TextLabel
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "Title"
 titleLabel.Text = "LOADING..."
 titleLabel.Font = Enum.Font.Cartoon
 titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
-titleLabel.TextSize = 55 -- Slightly smaller to make space
+titleLabel.TextSize = 55
 titleLabel.TextStrokeTransparency = 0.5
 titleLabel.TextStrokeColor3 = Color3.fromRGB(20,20,20)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Size = UDim2.new(1, 0, 0.25, 0)
-titleLabel.Position = UDim2.new(0.5, 0, 0.15, 0) -- Moved up a bit
+titleLabel.Position = UDim2.new(0.5, 0, 0.15, 0)
 titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 titleLabel.Parent = loadingContainer
 
@@ -75,22 +91,22 @@ titleLabel.Parent = loadingContainer
 local brandLabel = Instance.new("TextLabel")
 brandLabel.Name = "BrandLabel"
 brandLabel.Text = "VelvetHub Scripts [BGSI]"
-brandLabel.Font = Enum.Font.GothamSemibold -- Or Enum.Font.SourceSansSemibold, or another clean font
+brandLabel.Font = Enum.Font.GothamSemibold
 brandLabel.TextSize = 32
-brandLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- Base color, gradient will override
+brandLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 brandLabel.BackgroundTransparency = 1
 brandLabel.Size = UDim2.new(1, 0, 0.2, 0)
-brandLabel.Position = UDim2.new(0.5, 0, 0.42, 0) -- Positioned between title and loading bar
+brandLabel.Position = UDim2.new(0.5, 0, 0.42, 0)
 brandLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 brandLabel.Parent = loadingContainer
 
 local brandGradient = Instance.new("UIGradient")
 brandGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 0, 255)),   -- Purple
-    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 0, 170)), -- Pink/Magenta
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 0))    -- Orange-ish Pink
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 0, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 0, 170)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 100, 0))
 })
-brandGradient.Rotation = 45 -- Angle of the gradient
+brandGradient.Rotation = 45
 brandGradient.Parent = brandLabel
 
 -- Create a loading bar background
@@ -99,8 +115,8 @@ loadingBarBackground.Name = "LoadingBarBackground"
 loadingBarBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 loadingBarBackground.BorderColor3 = Color3.fromRGB(20,20,20)
 loadingBarBackground.BorderSizePixel = 2
-loadingBarBackground.Size = UDim2.new(0.9, 0, 0.15, 0) -- Adjusted height
-loadingBarBackground.Position = UDim2.new(0.5, 0, 0.75, 0) -- Moved down
+loadingBarBackground.Size = UDim2.new(0.9, 0, 0.15, 0)
+loadingBarBackground.Position = UDim2.new(0.5, 0, 0.75, 0)
 loadingBarBackground.AnchorPoint = Vector2.new(0.5, 0.5)
 loadingBarBackground.Parent = loadingContainer
 
@@ -108,7 +124,6 @@ local UICornerForBar = Instance.new("UICorner")
 UICornerForBar.CornerRadius = UDim.new(0, 8)
 UICornerForBar.Parent = loadingBarBackground
 
--- Create the loading bar itself (the fill)
 local loadingBarFill = Instance.new("Frame")
 loadingBarFill.Name = "LoadingBarFill"
 loadingBarFill.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
@@ -120,113 +135,128 @@ local UICornerForFill = Instance.new("UICorner")
 UICornerForFill.CornerRadius = UDim.new(0, 8)
 UICornerForFill.Parent = loadingBarFill
 
--- Create a percentage TextLabel
 local percentageLabel = Instance.new("TextLabel")
 percentageLabel.Name = "PercentageLabel"
 percentageLabel.Text = "0%"
 percentageLabel.Font = Enum.Font.Cartoon
 percentageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-percentageLabel.TextSize = 28 -- Slightly smaller
+percentageLabel.TextSize = 28
 percentageLabel.BackgroundTransparency = 1
 percentageLabel.Size = UDim2.new(1, 0, 1, 0)
 percentageLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
 percentageLabel.AnchorPoint = Vector2.new(0.5, 0.5)
 percentageLabel.ZIndex = loadingBarBackground.ZIndex + 1
 percentageLabel.Parent = loadingBarBackground
-print("Executor: All GUI elements created and parented.")
+print("[GUI_SETUP] All GUI elements created and parented.")
 
 -- The URL for the script to load
-local scriptUrl = "https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"
+local scriptUrl = "loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()"
 local scriptContent = nil
 
 -- Coroutine to execute the external script
 local function executeExternalScript()
-    local success, result = pcall(function()
-        print("Executor: Attempting to fetch script from URL:", scriptUrl)
+    print("[SCRIPT_EXEC] Starting executeExternalScript coroutine.")
 
+    -- Simple loadstring self-test
+    print("[SCRIPT_EXEC] Performing loadstring self-test...")
+    local testFunc, testErr = loadstring("print('[LOADSTRING_TEST] Simple loadstring self-test successful!')")
+    if testFunc then
+        local successTest, errTest = pcall(testFunc)
+        if not successTest then
+            print("[LOADSTRING_TEST_ERROR] Self-test pcall failed:", errTest)
+        end
+    else
+        print("[LOADSTRING_TEST_ERROR] Self-test loadstring compilation failed:", testErr)
+        warn("[SCRIPT_EXEC_WARN] Loadstring functionality might be disabled or broken in this environment.")
+        -- It might still be worth trying the main script if only the test format was an issue
+    end
+
+    local success, result = pcall(function()
+        print("[SCRIPT_EXEC] Attempting to fetch script from URL:", scriptUrl)
         local fetched = false
+
         -- Method 1: Using game:HttpGetAsync
-        if not fetched then
-            local canFetch, fetchResultOrContent = pcall(function()
-                return game:HttpGetAsync(scriptUrl, true)
-            end)
-            if canFetch and fetchResultOrContent then
-                scriptContent = fetchResultOrContent
-                fetched = true
-                print("Executor: Successfully fetched script content using game:HttpGetAsync.")
-            else
-                warn("Executor: game:HttpGetAsync failed. Reason:", fetchResultOrContent)
-            end
+        print("[HTTP_FETCH] Trying game:HttpGetAsync...")
+        local canFetch, fetchResultOrContent = pcall(function()
+            return game:HttpGetAsync(scriptUrl, true)
+        end)
+        if canFetch and type(fetchResultOrContent) == "string" and #fetchResultOrContent > 0 then
+            scriptContent = fetchResultOrContent
+            fetched = true
+            print("[HTTP_FETCH] Successfully fetched script content using game:HttpGetAsync. Length:", #scriptContent)
+        else
+            warn("[HTTP_FETCH_WARN] game:HttpGetAsync failed or returned empty. CanFetch:",官员canFetch, "Reason/Type:", fetchResultOrContent)
         end
 
-        -- Method 2: Check for common executor HttpGet (adapt function name if needed)
+        -- Method 2: Check for common executor HttpGet
         if not fetched and typeof(HttpGet) == "function" then
-             print("Executor: Trying common executor's HttpGet function...")
+             print("[HTTP_FETCH] Trying common executor's HttpGet function...")
              local executorFetchSuccess, executorFetchContent = pcall(HttpGet, scriptUrl)
-             if executorFetchSuccess and type(executorFetchContent) == "string" then
+             if executorFetchSuccess and type(executorFetchContent) == "string" and #executorFetchContent > 0 then
                  scriptContent = executorFetchContent
                  fetched = true
-                 print("Executor: Successfully fetched script content using executor's HttpGet.")
+                 print("[HTTP_FETCH] Successfully fetched script content using executor's HttpGet. Length:", #scriptContent)
              else
-                 warn("Executor: Executor's HttpGet also failed or is not available. Reason:", executorFetchContent)
+                 warn("[HTTP_FETCH_WARN] Executor's HttpGet failed or returned empty. Success:", executorFetchSuccess, "Reason/Type:", executorFetchContent)
              end
         end
         
-        -- Method 3: Check for syn.request (common in Synapse X and related executors)
+        -- Method 3: Check for syn.request
         if not fetched and syn and typeof(syn.request) == "function" then
-            print("Executor: Trying syn.request function...")
-            local synRequestSuccess, synRequestResult = pcall(function()
-                return syn.request({Url = scriptUrl, Method = "GET"}).Body
+            print("[HTTP_FETCH] Trying syn.request function...")
+            local synRequestSuccess, synRequestResultObj = pcall(function()
+                return syn.request({Url = scriptUrl, Method = "GET"})
             end)
-            if synRequestSuccess and type(synRequestResult) == "string" then
-                scriptContent = synRequestResult
+            if synRequestSuccess and synRequestResultObj and type(synRequestResultObj.Body) == "string" and #synRequestResultObj.Body > 0 then
+                scriptContent = synRequestResultObj.Body
                 fetched = true
-                print("Executor: Successfully fetched script content using syn.request.")
+                print("[HTTP_FETCH] Successfully fetched script content using syn.request. Length:", #scriptContent)
             else
-                 warn("Executor: syn.request failed. Reason:", synRequestResult)
+                 warn("[HTTP_FETCH_WARN] syn.request failed or returned empty body. Success:", synRequestSuccess, "Result:", synRequestResultObj)
             end
         end
 
-        if not fetched or not scriptContent then
-            warn("Executor: FAILED to fetch script from URL using available methods.")
-            warn("Executor: You may need to paste the script content manually into this script (see 'scriptContent' variable),")
-            warn("Executor: or ensure your executor and the game settings allow HTTP requests to the given URL.")
-            -- FALLBACK: Manually paste script content here if all else fails
-            -- scriptContent = [[ -- Paste your Lua script content here -- ]]
-            if not scriptContent then return end
+        if not fetched or not scriptContent or #scriptContent == 0 then
+            warn("[SCRIPT_EXEC_ERROR] FAILED to fetch script from URL using all available methods or content is empty.")
+            warn("[SCRIPT_EXEC_ERROR] Ensure your executor supports HTTP requests and the game allows them (if using game:HttpGetAsync),")
+            warn("[SCRIPT_EXEC_ERROR] or paste the script content manually into the 'scriptContent' variable in this script.")
+            -- FALLBACK: scriptContent = [[ -- Paste your Lua script content here -- ]]
+            if not scriptContent or #scriptContent == 0 then return end -- Exit if no script content
         end
 
+        print("[SCRIPT_EXEC] Script content fetched. Attempting loadstring compilation...")
         local scriptFunction, loadError = loadstring(scriptContent)
         if scriptFunction then
-            print("Executor: Loadstring successful. Executing script in a new protected environment...")
-            task.spawn(function()
+            print("[SCRIPT_EXEC] Loadstring compilation successful. Executing the loaded script now in a new coroutine...")
+            task.spawn(function() -- Execute in its own coroutine so it doesn't halt loading screen if it yields/errors
+                print("[LOADED_SCRIPT] Attempting to run pcall on the function from loadstring.")
                 local execSuccess, execError = pcall(scriptFunction)
                 if not execSuccess then
-                    warn("Executor: Error executing loaded script:", execError)
+                    warn("[LOADED_SCRIPT_ERROR] Error executing loaded script:", execError)
                 else
-                    print("Executor: External script executed via loadstring.")
+                    print("[LOADED_SCRIPT] External script executed successfully via loadstring.")
                 end
             end)
         else
-            warn("Executor: Loadstring failed:", loadError)
+            warn("[SCRIPT_EXEC_ERROR] Loadstring compilation failed:", loadError)
         end
     end)
 
     if not success then
-        warn("Executor: Error in the executeExternalScript function itself:", result)
+        warn("[SCRIPT_EXEC_FATAL] An error occurred within the executeExternalScript pcall wrapper itself:", result)
     end
 end
 
-task.spawn(executeExternalScript)
-print("Executor: External script execution process initiated.")
+task.spawn(executeExternalScript) -- This ensures GUI is already visible when script execution starts
+print("[INIT] External script execution process initiated via task.spawn().")
 
 -- Animate the loading bar
 local targetPercentage = 99
 local currentPercentage = 0
 local loadingDuration = 4
 local startTime = tick()
-
 local animationConnection
+
 animationConnection = RunService.RenderStepped:Connect(function(deltaTime)
     if not screenGui or not screenGui.Parent then
         if animationConnection then
@@ -243,7 +273,7 @@ animationConnection = RunService.RenderStepped:Connect(function(deltaTime)
         if animationConnection then
             animationConnection:Disconnect()
             animationConnection = nil
-            print("Executor: Loading screen reached 99%. Animation stopped. GUI will remain.")
+            print("[ANIMATION] Loading screen reached 99%. Animation stopped. GUI will remain.")
         end
         return
     end
