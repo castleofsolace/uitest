@@ -1,91 +1,76 @@
-local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
-local function CreateLoadingGUI()
+-- Exploit-safe GUI creation
+local function CreateLoader()
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.ResetOnSpawn = false
     ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.ResetOnSpawn = false
     
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(1, 0, 1, 0)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-    MainFrame.BorderSizePixel = 0
-    MainFrame.Parent = ScreenGui
+    local Main = Instance.new("Frame")
+    Main.Size = UDim2.new(1, 0, 1, 0)
+    Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    Main.BorderSizePixel = 0
     
+    -- Gradient text implementation
     local TextLabel = Instance.new("TextLabel")
-    TextLabel.Size = UDim2.new(1, 0, 0.3, 0)
-    TextLabel.Position = UDim2.new(0, 0, 0.3, 0)
-    TextLabel.BackgroundTransparency = 1
     TextLabel.Text = "VelvetHub Scripts [BGSI]"
+    TextLabel.Size = UDim2.new(1, 0, 0.2, 0)
+    TextLabel.Position = UDim2.new(0, 0, 0.35, 0)
+    TextLabel.BackgroundTransparency = 1
     TextLabel.Font = Enum.Font.GothamBlack
-    TextLabel.TextSize = 32
+    TextLabel.TextSize = 28
     
-    -- Gradient effect
     local Gradient = Instance.new("UIGradient")
     Gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(148, 148, 148)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(214, 214, 214)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(148, 148, 148))
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(170, 170, 170)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 100, 100))
     })
-    Gradient.Rotation = 90
+    Gradient.Rotation = 45
     Gradient.Parent = TextLabel
     
-    TextLabel.Parent = MainFrame
+    -- Progress bar construction
+    local BarContainer = Instance.new("Frame")
+    BarContainer.Size = UDim2.new(0.8, 0, 0.04, 0)
+    BarContainer.Position = UDim2.new(0.1, 0, 0.55, 0)
+    BarContainer.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    BarContainer.BorderSizePixel = 0
     
-    local LoadingBarFrame = Instance.new("Frame")
-    LoadingBarFrame.Size = UDim2.new(0.7, 0, 0.05, 0)
-    LoadingBarFrame.Position = UDim2.new(0.15, 0, 0.5, 0)
-    LoadingBarFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    LoadingBarFrame.BorderSizePixel = 0
-    LoadingBarFrame.ClipsDescendants = true
+    local Progress = Instance.new("Frame")
+    Progress.Size = UDim2.new(0, 0, 1, 0)
+    Progress.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
+    Progress.BorderSizePixel = 0
+    Progress.Parent = BarContainer
     
-    local ProgressBar = Instance.new("Frame")
-    ProgressBar.Size = UDim2.new(0, 0, 1, 0)
-    ProgressBar.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
-    ProgressBar.BorderSizePixel = 0
-    ProgressBar.Parent = LoadingBarFrame
+    -- Assembly hierarchy
+    TextLabel.Parent = Main
+    BarContainer.Parent = Main
+    Main.Parent = ScreenGui
     
-    LoadingBarFrame.Parent = MainFrame
-    
-    local LoadingText = Instance.new("TextLabel")
-    LoadingText.Size = UDim2.new(1, 0, 0.1, 0)
-    LoadingText.Position = UDim2.new(0, 0, 0.6, 0)
-    LoadingText.BackgroundTransparency = 1
-    LoadingText.Text = "Loading... 0%"
-    LoadingText.Font = Enum.Font.Gotham
-    LoadingText.TextColor3 = Color3.new(1, 1, 1)
-    LoadingText.TextSize = 24
-    LoadingText.Parent = MainFrame
-    
-    return ScreenGui, ProgressBar, LoadingText
+    return ScreenGui, Progress
 end
 
--- Initialize GUI
-local LoadingGUI, ProgressBar, LoadingText = CreateLoadingGUI()
-LoadingGUI.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+-- Execution flow
+local LoaderUI, ProgressBar = CreateLoader()
+LoaderUI.Parent = game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
--- Animate progress bar
-local TweenInfo = TweenInfo.new(8, Enum.EasingStyle.Linear)
-local ProgressTween = TweenService:Create(
-    ProgressBar,
-    TweenInfo,
-    {Size = UDim2.new(0.99, 0, 1, 0)}
-)
-
--- Start loading animation
+-- Non-blocking animation routine
 task.spawn(function()
-    local startTime = tick()
-    ProgressTween:Play()
+    local StartTime = tick()
+    local Tween = TweenService:Create(
+        ProgressBar,
+        TweenInfo.new(9, Enum.EasingStyle.Quad),
+        {Size = UDim2.new(0.99, 0, 1, 0)}
+    )
     
-    while tick() - startTime < 8 do
-        local progress = math.min((tick() - startTime) / 8, 0.99)
-        LoadingText.Text = string.format("Loading... %d%%", math.floor(progress * 100))
-        task.wait(0.1)
+    Tween:Play()
+    
+    while tick() - StartTime < 9 do
+        RunService.Heartbeat:Wait()
     end
-    LoadingText.Text = "Loading... 99%"
 end)
 
--- Execute main script in background
+-- Background script execution
 task.spawn(function()
     loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
-end
+end)
